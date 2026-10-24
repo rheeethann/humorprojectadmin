@@ -17,9 +17,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <section aria-labelledby="login-heading" className="login-card">
         <p className="eyebrow">Reality Check</p>
         <h1 id="login-heading">Admin Mode</h1>
-        <p className="login-copy">Sign in with your Columbia Google account to manage users and content.</p>
+        <p className="login-copy">Sign in with an approved superadmin account to manage generation, users, and content.</p>
         <LoginForm initialError={errorCode && Object.hasOwn(authErrors, errorCode) ? authErrors[errorCode] : undefined} />
       </section>
     </main>
   );
 }
+

@@ -3,12 +3,14 @@
 /* eslint-disable @next/next/no-img-element -- Generated images are stored as short-lived private URLs. */
 
 import { useState, useTransition } from "react";
+import ResourcePanel from "./resource-panel";
+import { resources } from "@/lib/resources";
 import { useRouter } from "next/navigation";
 import { deleteContent, setUserRole } from "./admin-actions";
 import { signOut } from "./auth/actions";
 import { filterContent, filterUsers, type AdminContent, type AdminUser, type ContentSort, type UserSort } from "@/lib/admin-table";
 
-type Tab = "users" | "content";
+type Tab = string;
 type Notice = { text: string; error: boolean } | null;
 
 function formatDateTime(value: string | null): string {
@@ -167,6 +169,8 @@ export default function AdminDashboard({ users, content, viewerId, viewerName, a
 }) {
   const [tab, setTab] = useState<Tab>("users");
   const [notice, setNotice] = useState<Notice>(null);
+  const [selection, setSelection] = useState<{section:string;filter?:{key:string;value:string}}>({section:"chains"});
+  function navigate(next:typeof selection){ setSelection(next); setTab(next.section); }
 
   return (
     <main>
@@ -178,16 +182,22 @@ export default function AdminDashboard({ users, content, viewerId, viewerName, a
           <form action={signOut}><button type="submit" className="nav-link">Sign out</button></form>
         </div>
       </nav>
-      <section className="admin-shell">
-        <div className="tabs" role="tablist" aria-label="Admin sections">
-          <button type="button" role="tab" aria-selected={tab === "users"} className={tab === "users" ? "tab active" : "tab"} onClick={() => setTab("users")}>Users <span>{users.length}</span></button>
-          <button type="button" role="tab" aria-selected={tab === "content"} className={tab === "content" ? "tab active" : "tab"} onClick={() => setTab("content")}>Content <span>{content.filter((item) => !item.deletedAt).length}</span></button>
-        </div>
-        {notice && <p className={notice.error ? "form-message error" : "form-message success"} role={notice.error ? "alert" : "status"}>{notice.text}</p>}
-        <div role="tabpanel">
-          {tab === "users" ? <UsersTable users={users} viewerId={viewerId} onNotice={setNotice} /> : <ContentTable content={content} onNotice={setNotice} />}
-        </div>
-      </section>
+      <div className="admin-workspace">
+        <aside className="admin-sidebar" aria-label="Admin sections">
+          <p className="sidebar-label">Overview</p>
+          <button className={tab==='users'?'active':''} onClick={()=>setTab('users')}>Users <span>{users.length}</span></button>
+          <button className={tab==='content'?'active':''} onClick={()=>setTab('content')}>Generated media <span>{content.filter(c=>!c.deletedAt).length}</span></button>
+          <p className="sidebar-label">Generation & configuration</p>
+          {resources.map(r=><button key={r.key} className={tab===r.key?'active':''} onClick={()=>navigate({section:r.key})}>{r.label}</button>)}
+        </aside>
+        <section className="admin-main">
+          {notice&&<p className={notice.error?'form-message error':'form-message success'} role="status">{notice.text}</p>}
+          {tab==='users'?<><header className="resource-heading"><div><p className="eyebrow">Reality Check · Administration</p><h1>Users</h1><p>Members, roles, and community activity.</p></div></header><UsersTable users={users} viewerId={viewerId} onNotice={setNotice}/></>:
+           tab==='content'?<><header className="resource-heading"><div><p className="eyebrow">Reality Check · Administration</p><h1>Generated media</h1><p>Image and caption pairs with their original prompts and community ratings.</p></div></header><ContentTable content={content} onNotice={setNotice}/></>:
+           <ResourcePanel key={JSON.stringify(selection)} selection={selection} onNavigate={navigate}/>}
+        </section>
+      </div>
     </main>
   );
 }
+

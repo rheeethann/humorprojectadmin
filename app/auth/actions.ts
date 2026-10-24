@@ -15,7 +15,7 @@ export async function signInWithGoogle() {
         redirectTo: `${getSiteUrl()}/auth/callback`,
         skipBrowserRedirect: true,
         // Always show Google's account chooser, even with an existing Google or app session.
-        queryParams: { hd: "columbia.edu", prompt: "select_account" },
+        queryParams: { prompt: "select_account" },
       },
     });
     if (error || !data.url) throw new Error("OAuth initialization failed");
@@ -34,3 +34,4 @@ export async function signOut() {
   revalidatePath("/", "layout");
   redirect("/login");
 }
+

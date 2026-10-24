@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getSiteUrl, isColumbiaEmail, namesFromGoogle } from "@/lib/auth";
+import { getSiteUrl, namesFromGoogle } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
@@ -19,8 +19,8 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
   if (error || !data.user) return finish("/login?error=callback");
 
-  // Google’s `hd` parameter is only a hint; enforce the Columbia restriction here.
-  if (!isColumbiaEmail(data.user.email)) {
+  const { data: allowed, error: accessError } = await supabase.rpc("member_allowed");
+  if (accessError || !allowed || !data.user.email) {
     await supabase.auth.signOut({ scope: "local" });
     return finish("/login?error=domain");
   }
@@ -40,3 +40,4 @@ export async function GET(request: NextRequest) {
 
   return finish("/");
 }
+

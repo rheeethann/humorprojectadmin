@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => {
     query,
     supabase: {
       auth: { exchangeCodeForSession: vi.fn(), signInWithOAuth: vi.fn(), signOut: vi.fn() },
-      from: vi.fn(),
+      from: vi.fn(), rpc: vi.fn(),
     },
   };
 });
@@ -30,6 +30,7 @@ beforeEach(() => {
   });
   mocks.supabase.auth.signInWithOAuth.mockResolvedValue({ data: { url: "https://example.supabase.co/auth/v1/authorize" }, error: null });
   mocks.supabase.auth.signOut.mockResolvedValue({ error: null });
+  mocks.supabase.rpc.mockResolvedValue({ data: true, error: null });
   mocks.supabase.from.mockReturnValue(mocks.query);
   mocks.query.update.mockReturnValue(mocks.query);
   mocks.query.eq.mockReturnValue(mocks.query);
@@ -43,22 +44,23 @@ describe("admin Google sign-in", () => {
     expect(mocks.supabase.auth.signInWithOAuth).toHaveBeenCalledWith(expect.objectContaining({
       options: expect.objectContaining({
         redirectTo: "http://localhost:3001/auth/callback",
-        queryParams: { hd: "columbia.edu", prompt: "select_account" },
+        queryParams: { prompt: "select_account" },
       }),
     }));
   });
 
-  it("admits Columbia accounts", async () => {
+  it("admits approved accounts", async () => {
     const response = await callback();
     expect(response.headers.get("location")).toBe("http://localhost:3001/");
     expect(mocks.supabase.auth.signOut).not.toHaveBeenCalled();
   });
 
-  it("signs out and rejects non-Columbia accounts", async () => {
+  it("signs out and rejects unapproved accounts", async () => {
     mocks.supabase.auth.exchangeCodeForSession.mockResolvedValue({
       data: { user: { id: "outsider", email: "someone@gmail.com", user_metadata: {} } },
       error: null,
     });
+    mocks.supabase.rpc.mockResolvedValue({ data: false, error: null });
     const response = await callback();
     expect(response.headers.get("location")).toBe("http://localhost:3001/login?error=domain");
     expect(mocks.supabase.auth.signOut).toHaveBeenCalledWith({ scope: "local" });
@@ -69,4 +71,18 @@ describe("admin Google sign-in", () => {
     const response = await callback("?error=access_denied");
     expect(response.headers.get("location")).toBe("http://localhost:3001/login?error=cancelled");
   });
+});
+
+
+describe("database admission", () => {
+ it("admits an explicitly whitelisted external email",async()=>{
+  mocks.supabase.auth.exchangeCodeForSession.mockResolvedValue({data:{user:{id:"verified-user-id",email:"guest@gmail.com",user_metadata:{}}},error:null});
+  mocks.supabase.rpc.mockResolvedValue({data:true,error:null});
+  const response=await callback(); expect(response.headers.get("location")).not.toContain("error=domain");
+ });
+ it("fails closed when admission cannot be checked",async()=>{
+  mocks.supabase.rpc.mockResolvedValue({data:null,error:{message:"offline"}});
+  const response=await callback(); expect(response.headers.get("location")).toContain("error=domain");
+  expect(mocks.supabase.from).not.toHaveBeenCalled();
+ });
 });

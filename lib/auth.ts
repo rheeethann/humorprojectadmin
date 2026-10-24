@@ -30,7 +30,8 @@ export function isColumbiaEmail(email: unknown): email is string {
 export const authErrors: Record<string, string> = {
   cancelled: "Google sign-in was cancelled. Please try again when you’re ready.",
   callback: "We couldn’t finish signing you in. Please start Google sign-in again.",
-  domain: "The admin panel is limited to Columbia University (@columbia.edu) Google accounts.",
+  domain: "This account is not approved for access. Contact the administrator.",
   profile: "We couldn’t load your profile. Please try signing in again.",
   signout: "We couldn’t sign you out. Please try again.",
 };
+

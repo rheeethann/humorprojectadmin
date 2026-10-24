@@ -1,42 +1,49 @@
-# humorprojectadmin
+# Reality Check Admin
 
-Admin panel for [Reality Check](https://github.com/rheeethann/humorproject). It is a separate Next.js 16 app and Vercel project that uses the same Supabase project as the main app. Members reach it from the **Admin Mode** link in the main app's bottom-right corner.
+A separate Next.js application for [Reality Check](https://github.com/rheeethann/humorproject), using the same Supabase project. Production: https://humorprojectadmin-two.vercel.app.
 
-## What it does
+## Assignment coverage
 
-- **Google sign-in, every time.** The panel keeps its own session cookie, separate from the main app's, and asks Google to show the account chooser. A main-app session never carries over. Only verified `@columbia.edu` accounts are admitted.
-- **Users:** name, email, role, posts generated, votes cast, current voting streak, average distance from each image's average score, and last sign-in. You can search by name, email or role, and sort by most recent visit, name, votes cast or streak. Promote a user to superadmin, or demote them. Superadmins see a **Delete** button on every post in the main app.
-- **Content:** each image with its caption, prompt, author, creation time, vote count and average score. You can search by caption, prompt or author, and sort by most recent, caption or votes. **Delete** soft-deletes a post: it disappears from the app and can no longer be rated, and `generated_media.deleted_at` / `deleted_by` record the deletion. Tick **Show deleted** to see deleted posts.
+| Requirement | Screen / behavior |
+| --- | --- |
+| Read users | Users: profiles, roles, activity and ratings |
+| Read prompt chains | Prompt chains: definitions, linked steps and executions |
+| Read prompt chain steps | Chain steps: order, model, exact templates and input/output types |
+| Read/update prompt chain mix | Prompt chain mix: enable chains and choose 1–3 outputs each; 1–5 total |
+| CRUD terms | Terms: 36 seeded Columbia/college entries, aliases, definitions, examples, provenance and active state |
+| Read/view AI-generated media | Generated media plus image previews in run/response details |
+| Read generation requests | Generation requests: original prompt, status, quota reservation, complete configuration snapshot |
+| CRUD AI generation examples | Generation examples: input, desired image prompt, explanation and optional chain association |
+| CRUD LLM models/providers | LLM models / LLM providers; referenced records cannot be deleted |
+| Read LLM responses | LLM responses: full prompts, output, model/provider snapshot, timing and errors |
+| CRUD allowed signup domains | Allowed signup domains |
+| CRUD whitelisted email addresses | Whitelisted emails |
 
-A streak counts consecutive days with at least one vote, ending today, or yesterday if the user hasn't voted yet today. Days are UTC.
+All configuration changes affect new requests. Old request snapshots and response logs preserve their original values. Configuration and history tables have paginated search, record details, and links between chains, requests, runs and responses.
 
-## Database
+## Access
 
-All data comes from `security definer` functions in the main repo's `supabase/migrations/20261020120000_create_admin.sql`: `admin_users()`, `admin_media()`, `admin_set_role()` and `admin_delete_media()`. Each one checks `can_access_admin()`, so the panel needs only the publishable key and no service-role secret. Apply that migration to the Supabase project before using the panel. It also makes `enr2131@columbia.edu` a superadmin.
+Google sign-in uses a separate admin cookie. Access requires a verified email admitted by an allowed domain or individual whitelist **and** `profiles.role = 'superadmin'`. The initial allowed domain is `columbia.edu`. Existing superadmins are retained. Configuration writes and all existing admin RPCs enforce admin access in the database; hiding buttons is not the security boundary. An administrator cannot remove the domain/email rule that currently admits their own account.
 
-`can_access_admin()` currently admits any Columbia account, as the spec requires. To limit the panel to superadmins, change its body to `select public.is_superadmin();`.
+The app needs only the publishable Supabase key. Do not put API credentials in providers or models. Providers select the supported `google` or `cloudflare` adapter; new adapters require application code. Changing a referenced model identifier changes future requests, so ensure the identifier is valid for the selected provider and kind.
 
-## Development
+## Database and development
 
-```sh
-npm install
-cp .env.example .env.local   # fill in the Supabase publishable key
-npm run dev                  # http://localhost:3001
-```
-
-Run the main app on port 3000 with `NEXT_PUBLIC_ADMIN_URL=http://localhost:3001` so its Admin Mode link points here.
-
-## Deploying on Vercel
-
-1. Import this repository as a new Vercel project.
-2. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL` (this project's origin) and `NEXT_PUBLIC_APP_URL` (the main app's origin).
-3. In Supabase → Authentication → URL Configuration, add `<admin origin>/auth/callback` (and `http://localhost:3001/auth/callback` for local use) to the Redirect URLs allow list.
-4. Set `NEXT_PUBLIC_ADMIN_URL` in the main app's Vercel project to this project's origin, then redeploy the main app.
-
-## Checks
+Migrations live in the main repository, including `20261024215209_generation_admin.sql`. Apply them to the shared database before running this release. The older project has some schema changes applied outside migration history; do not blindly replay its historical migrations on production.
 
 ```sh
+npm ci
+cp .env.example .env.local
+npm run dev
 npm run lint
 npm test
 npm run build
 ```
+
+Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`, and `NEXT_PUBLIC_APP_URL`. Port 3001 is the local default. Add the admin origin plus `/auth/callback` to Supabase's redirect allowlist. Google redirects to Supabase, which then redirects to this app.
+
+## Verification
+
+Tests cover callback admission and fail-closed behavior, external-email exceptions, form validation, table searching/sorting, and unsupported resource selection. The main repository includes transaction-only SQL checks for permissions, CRUD, access revocation, quota reservation, snapshots and mix validation.
+
+The professor's screenshots informed the grouped navigation and expandable prompt/example details. User-provided Columbia descriptions are labeled as project-owner context; generic college definitions and CourseWorks provenance are recorded on individual terms.
