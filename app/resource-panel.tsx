@@ -64,7 +64,7 @@ function Detail({section,id,lookups,onClose,onNavigate}:{section:string;id:strin
 function Mix({rows,lookups,onSaved}:{rows:Row[];lookups:Lookups;onSaved:()=>void}) {
  const [items,setItems]=useState(rows.map(r=>({id:r.id,chain_id:String(r.chain_id),enabled:Boolean(r.enabled),output_count:Number(r.output_count)})));
  const [notice,setNotice]=useState('');const [pending,start]=useTransition();const total=items.reduce((sum,i)=>sum+(i.enabled?i.output_count:0),0);
- return <div className="mix-editor"><div className="metric-strip"><strong>{total}</strong><span>images per generation request<br/><small>Five image attempts per member per rolling 24 hours.</small></span></div>
+ return <div className="mix-editor"><div className="metric-strip"><strong>{total}</strong><span>{total===1?'image':'images'} per generation request<br/><small>Five image attempts per member per rolling 24 hours.</small></span></div>
  <div className="mix-cards">{items.map((item,index)=><section className="mix-card" key={item.id}><h3>{readable('chain_id',item.chain_id,lookups)}</h3><p>{String(lookups.prompt_chains?.find(c=>c.id===item.chain_id)?.description??'')}</p><div className="mix-controls"><label className="check-field"><input type="checkbox" checked={item.enabled} onChange={e=>setItems(items.map((v,i)=>i===index?{...v,enabled:e.target.checked}:v))}/>Enabled</label><label>Images <select value={item.output_count} onChange={e=>setItems(items.map((v,i)=>i===index?{...v,output_count:Number(e.target.value)}:v))}>{[1,2,3].map(n=><option key={n}>{n}</option>)}</select></label></div></section>)}</div>
  <p className="muted">Changes apply to future requests. Previous requests retain their configuration snapshot.</p>
  {notice&&<p role="status">{notice}</p>}
